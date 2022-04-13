@@ -18,7 +18,7 @@ easy_6_used = false;
 hard_6_used = false;
 audio_index = 1;
 Audio_File_Order = zeros([1 5]);
-%Begin Script
+%Begin training script
 wide_trial = 1;
 while wide_trial < 7
 fprintf('------------- \n')
@@ -26,10 +26,10 @@ fprintf('------------- \n\n')
 
 %% Define Trial s
 trial_order=[1,1:4];
-list = cell(1,5);
+list = cell(1,1);
 
 %%
-%Updating the 
+%Updating the set of completed trials
 if wide_trial == 1
 training_done = 0;
 trials_completed = [0, 0, 0, 0];
@@ -51,29 +51,35 @@ training_done = 1;
 trials_completed = [1, 1, 1, 0];
 end
 
-for x = 1
-    if training_done == 0
-        str = sprintf('Training Game %d [ ]',x);
-    else
-        str = sprintf('Training Game %d [X]',x);
-    end
-    list(x) = {str};
-end
-
-%%
-n = 0;
+% Make dialog box
+line = 1;
+% Update dialog box
+if training_done == 0
+    str = sprintf('Training Game');
+    list(line) = {str};
+    line = line +1;
+else
     for trial = 1:4
         if trials_completed(trial) == 0
-            str = sprintf('Trial Game %d [ ]',trial);
+            str = sprintf('Trial Game %d',trial);
+            list(line) = {str};
+            % Set trial_number
+            test_trial_num = trial;
+            break
         else
             str = sprintf('Trial Game %d [X]',trial);
         end
-        n = n+1;
-        list(n+x) = {str};
+%         n = n+1;
+%         list(n+x) = {str};
     end
+end
+
+
+%%
+
+
  
 %%   
-
 [trial_num,tf] = listdlg('ListString',list);
 
 if tf == 0
@@ -81,28 +87,31 @@ if tf == 0
     break
 end
 
-if trial_num <= 1
+%Command line output
+if (trial_num <= 1) && (training_done==0) 
     fprintf('Running Training %d...\n\n', trial_num)
     train = true;
 else
-    fprintf('Running Trial %d...\n\n', trial_num - x)
+    fprintf('Running Trial %d...\n\n', test_trial_num)
     train = false;
 end
 
-fprintf('Good luck, gave fun! Game will start in 5 seconds :) \n\n')
-pause(5)
+fprintf('Good luck, have fun! Game will start in 5 seconds :) \n\n')
+pause(0.1)
 
 startLoop = tic;
-Total_Session_Time = 181; %seconds
+Total_Session_Time = 180; %seconds
 
-if trial_num == 1
-    level = 3;
+if train == true
+    level = 5;
     [y, Fs] = audioread('6 WPM Training Set.mp3');
     sound(y, Fs, 16);
     audio_file_number = 5;
+    test_name = 'Training';
+    Total_Session_Time = 60; % Training trial is shorter
 else
     
-    if trial_num == 2
+    if test_trial_num == 1
         if Game_Difficulty_Order(1) < 3
             level = 5;            
         else
@@ -110,21 +119,21 @@ else
 
         end
         
-    elseif trial_num == 3
+    elseif test_trial_num == 2
         if Game_Difficulty_Order(2) < 3
             level = 5;
         else
             level = 10;
         end
         
-    elseif trial_num == 4
+    elseif test_trial_num == 3
         if Game_Difficulty_Order(3) < 3
             level = 5;
         else
             level = 10;
         end
          
-    elseif trial_num == 5
+    elseif test_trial_num == 4
         
         if Game_Difficulty_Order(4) < 3
             level = 5;
@@ -135,16 +144,18 @@ else
 end
 
 
-if level == 5
+if level == 5 && train == false
     if easy_6_used == false
     [y, Fs] = audioread('6 WPM Set 1.mp3');
     sound(y, Fs, 16);
     easy_6_used = true;
     audio_file_number = 1;
+    test_name = 'Alpha';
     else
     [y, Fs] = audioread('12 WPM Set 1.mp3');
     sound(y, Fs, 16);
     audio_file_number = 3;
+    test_name = 'Beta';
     end
 elseif level == 10
     if hard_6_used == false
@@ -152,10 +163,12 @@ elseif level == 10
     sound(y, Fs, 16);
     hard_6_used = true; 
     audio_file_number = 2;
+    test_name = 'Gamma';
     else
     [y, Fs] = audioread('12 WPM Set 2.mp3');
     sound(y, Fs, 16);
     audio_file_number = 4;
+    test_name = 'Delta';
     end
 end
 
@@ -183,7 +196,7 @@ quitkey    = 'q';       % quit game (at end of or during game)
 % - "Standard Rotation System" (SRS); rotation around fixed point to allow T-spinning
 % - Highscore system
 % - Drop tets from hidden layer above
-%% Initialize game area
+%% Initialise game area
 bbox=int8(zeros(boxheight,boxwidth));
 shownext=min(max(shownext,0),1);
 scrsize=get(0,'ScreenSize');
@@ -344,9 +357,16 @@ while mm<3 %mm==3 -> end game
     while nn<2 %nn==2 -> gameover
         movebox=0*bbox;
         movebox(tetind2(tet,:))=tet;
-        if sum(bbox(tetind2(tet,:)))>0 %check for space above (no space->gameover)
-            clear sound
-            break;
+        % Value initialization
+        downl=0;downr=0;downd=0;downb=0;downr1=0;downr2=0;upl=1;upr=1;upd=1;upb=1;upr1=1;upr2=1;ipause=0;
+        lrshift=0;dshift=0;movbott=0;irestart=0;iquit=0;rrot=0;
+        if sum(bbox(tetind2(tet,:)))>0 %check for space above (no space->automatic restart)
+        % Enable for true game over
+            % clear sound
+            % break;
+        % Enable for automatic restart
+            irestart = 1;
+            kk=1;nn=1;
         else
             kk=1;nn=1;
         end
@@ -360,8 +380,7 @@ while mm<3 %mm==3 -> end game
             drawnow
             axes(h2)
         end
-        downl=0;downr=0;downd=0;downb=0;downr1=0;downr2=0;upl=1;upr=1;upd=1;upb=1;upr1=1;upr2=1;ipause=0;
-        lrshift=0;dshift=0;movbott=0;irestart=0;iquit=0;rrot=0;
+
         while kk<2 %kk==2 -> new tet
             figure(boxfig)
             set(tt,'String',['Lines: ' num2str(nclearedtot) ' Level: ' num2str(level)...
@@ -418,11 +437,18 @@ while mm<3 %mm==3 -> end game
             
             %END SESSION WHEN TIME EXPIRES
               if endLoop > Total_Session_Time
-
-                  savescore(trial_num) = score1;
-                  savedifficulty(trial_num) = level;
-                  iquit = 1;
+           
+%                   savescore(trial_num) = score1;
+%                   savedifficulty(trial_num) = level;
+                  if level == 5
+                      easy_or_hard = 'Easy';
+                  else
+                      easy_or_hard = 'Hard';
+                  end
                   clear sound
+                  uiwait(msgbox(sprintf('1.PLEASE DO NOT CLOSE OUT OF THIS WINDOW YET \n\n2. Input the selection as: %s \n\n3. Input your score into the Google Form as: %d \n\n4. Select the words that you recognize from the test you just performed \n\n5. Move onto the next page of the Google Form \n\n6. Click "Ok" on this dialog box and proceed to the next test',test_name, score1)))
+                  fprintf("Selection: %s, Game Score: %d\n",test_name,score1)
+                  iquit = 1;
               end
               
             %UPDATE SESSION
@@ -501,10 +527,9 @@ while mm<3 %mm==3 -> end game
    
 end %mm
 
-
 wide_trial = wide_trial + 1;
 if wide_trial == 6
-    msgbox(sprintf('Thank you so much for playing! :) \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Please Input These Numbers into the Google Form: \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Training Game Score: %d \n\n Training Game Level: %d \n\n Training Game Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 1 Score: %d\n\n Trial 1 Level: %d \n\n Trial 1 Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 2 Score: %d\n\n Trial 2 Level: %d \n\n Trial 2 Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 3 Score: %d\n\n Trial 3 Level: %d \n\n Trial 3 Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 4 Score: %d\n\n Trial 4 Level: %d \n\n Trial 4 Sound File: %d', savescore(1), savedifficulty(1), Audio_File_Order(1), savescore(2), savedifficulty(2), Audio_File_Order(2), savescore(3), savedifficulty(3), Audio_File_Order(3), savescore(4), savedifficulty(4), Audio_File_Order(4), savescore(5), savedifficulty(5), Audio_File_Order(5)))
+    %msgbox(sprintf('Thank you so much for playing! :) \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Please Input These Numbers into the Google Form: \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Training Game Score: %d \n\n Training Game Level: %d \n\n Training Game Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 1 Score: %d\n\n Trial 1 Level: %d \n\n Trial 1 Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 2 Score: %d\n\n Trial 2 Level: %d \n\n Trial 2 Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 3 Score: %d\n\n Trial 3 Level: %d \n\n Trial 3 Sound File: %d \n\n xxxxxxxxxxxxxxxxxxxxxxxxxx \n\n Trial 4 Score: %d\n\n Trial 4 Level: %d \n\n Trial 4 Sound File: %d', savescore(1), savedifficulty(1), Audio_File_Order(1), savescore(2), savedifficulty(2), Audio_File_Order(2), savescore(3), savedifficulty(3), Audio_File_Order(3), savescore(4), savedifficulty(4), Audio_File_Order(4), savescore(5), savedifficulty(5), Audio_File_Order(5)))
 iquit = 1;
 break
 end

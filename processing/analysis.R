@@ -1,5 +1,5 @@
 # import data
-data1 <- read.csv("processedData2.csv")
+data1 <- read.csv("processedData.csv")
 nSubs = length(data1$Timestamp);
 
 ################################## H1 ######################################
@@ -13,12 +13,13 @@ tetrisDiff = c(rep(0,nSubs),rep(0,nSubs),rep(1,nSubs),rep(1,nSubs))
 wordSpd = c(rep(0,nSubs),rep(1,nSubs),rep(0,nSubs),rep(1,nSubs))
 condition = c(rep(1,nSubs),rep(2,nSubs),rep(3,nSubs),rep(4,nSubs))
 condition <- factor(condition)
-levels(condition)<-c("Alpha","Beta","Gamma","Delta")
+levels(condition)<-c("Alpha [low/slow]","Beta [low/fast]","Gamma [high/slow]","Delta [high/fast]")
 
 h1a = aov(wkldData~tetrisDiff+wordSpd)
 summary(h1a)
 
-boxplot(wkldData~condition)
+boxplot(wkldData~condition, main="H1) Workload by Condition",
+        xlab="Condition", ylab="Workload Rating")
 
 interaction.plot(x.factor = wordSpd, trace.factor = tetrisDiff, response = wkldData, fun = median,   ylab = "Workload",
                  xlab = "Word Presentation Rate",
@@ -42,8 +43,17 @@ subjNum = factor(rep(1:nSubs,4))
 h1f = friedman.test(wkldData,condition,subjNum)
 summary(h1f)
 boxplot(wkldData~condition, main="H1) Workload by Condition",
-        xlab="Condition", ylab="Workload Rating")
+        xlab="Condition", ylab="Workload Rating",col=c("yellow","orange","orange","red"))
 
+# some pairwise comparisons
+wilcox.test(data1$WorkloadA,data1$WorkloadB, paired=TRUE)
+wilcox.test(data1$WorkloadA,data1$WorkloadC, paired=TRUE)
+wilcox.test(data1$WorkloadA,data1$WorkloadD, paired=TRUE)
+
+wilcox.test(data1$WorkloadB,data1$WorkloadC, paired=TRUE)
+wilcox.test(data1$WorkloadB,data1$WorkloadD, paired=TRUE)
+
+wilcox.test(data1$WorkloadC,data1$WorkloadD, paired=TRUE)
 ################################## H2 ######################################
 # h2: workload vs recall linear regression --> not sure this is really allowed w rep measures
 rcllData = 100*c(data1$recallA, data1$recallB, data1$recallC, data1$recallD)
@@ -62,7 +72,8 @@ shapiro.test(rcllData)
 #h2: non-parametric, friedmans anova with condition
 h2f = friedman.test(rcllData,condition,subjNum)
 boxplot(rcllData~condition, main="H2) Recall % by Condition",
-        xlab="Condition", ylab="Recall %")
+        xlab="Condition", ylab="Recall %",col=c("yellow","orange","orange","red"))
+
 
 ################################## H3 ######################################
 # h3: workload vs precision linear regression
@@ -82,7 +93,7 @@ shapiro.test(prcsnData)
 #h3: non-parametric, friedmans anova with condition
 h3f = friedman.test(prcsnData,condition,subjNum)
 boxplot(prcsnData~condition, main="H3) Precision % by Condition",
-        xlab="Condition", ylab="Precision %")
+        xlab="Condition", ylab="Precision %",col=c("yellow","orange","orange","red"))
 
 ################################## H0 ######################################
 # not kosher stats but interesting that precision is significant and recall is not
@@ -100,13 +111,19 @@ for (i in 1:nSubs) {
   wkldDataAvg[i] = mean(data1$WorkloadA[i], data1$WorkloadB[i], data1$WorkloadC[i], data1$WorkloadD[i])
 }
 shapiro.test(wkldDataAvg)
+hist(wkldDataAvg)
 
 # h4a: tetris experience vs workload
-r4a = cor(wkldDataAvg,data1$TetrisXP)
-h4a = lm(wkldDataAvg~data1$TetrisXP)
-plot(data1$TetrisXP,wkldDataAvg, main="H4a) Workload vs. Tetris Experience",
-     xlab="Self-Rated Tetris Experience", ylab="Reported Workload [MBS]")
-abline(h4a)
+tetrisXP = rep(data1$TetrisXP,1)
+h4a = lm(wkldDataAvg~tetrisXP)
+wkldAvgExp = h4a$coefficients[2]*tetrisXP + h4a$coefficients[1]
+residuals = wkldDataAvg-wkldAvgExp
+plot(wkldAvgExp,abs(residuals))
+h4b = lm(wkldAvgExp~abs(residuals))
+
+h4k = kruskal.test(wkldDataAvg,tetrisXP)
+boxplot(wkldData~tetrisXP, main="H4) Workload and Tetris Experience",
+        xlab="Self-Reported Tetris XP", ylab="Worklaod [MBS]")
 
 
 # h4b: high workload experience vs workload
@@ -143,9 +160,30 @@ abline(h5a)
 
 
 
-# h6: still to do.
+################################## H6-8 ######################################
+# h6: is there an ordering effect on tetris score
+# h7: is there an ordering effect on precision
+trialNums = c(data1$TrialNumA, data1$TrialNumB, data1$TrialNumC, data1$TrialNumD)
+h6f = friedman.test(scoreData,trialNums,subjNum)
+boxplot(scoreData~trialNums, main="H6) Tetris Score by Trial Number",
+        xlab="Trial #", ylab="Tetris Score")
+h7f = friedman.test(prcsnData,trialNums,subjNum)
+boxplot(prcsnData~trialNums, main="H7) Precision Data by Trial Number",
+        xlab="Trial #", ylab="% Precision")
+h8f = friedman.test(rcllData,trialNums,subjNum)
+boxplot(rcllData~trialNums, main="H8) Recall Data by Trial Number",
+        xlab="Trial #", ylab="% Recall")
 
-# precision vs recall
-plot(prcsnData,rcllData)
-h0 = lm(rcllData~prcsnData)
-abline(h0)
+################################## H9 ######################################
+# h9: is there an effect of learning style on recall
+learningStyle = factor(data1$LearnStyle)
+rcllDataAvg = integer(nSubs)
+for (i in 1:nSubs) {
+  rcllDataAvg[i] = 100*mean(data1$recallA[i], data1$recallB[i], data1$recallC[i], data1$recallD[i])
+}
+shapiro.test(rcllDataAvg)
+hist(rcllDataAvg)
+
+h9k = kruskal.test(rcllDataAvg~learningStyle)
+boxplot(rcllDataAvg~learningStyle, main="H9) Average Recall Data by Learning Style",
+        xlab="Learning Style", ylab="Average Recall %",col = c("green","blue","purple"))

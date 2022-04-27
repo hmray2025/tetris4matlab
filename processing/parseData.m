@@ -1,7 +1,7 @@
 %% Parsing Tetris Data
 clear;clc;
 %% Import Subject Responses
-data1 = readtable('realData1.csv');
+data1 = readtable('finalData.csv');
 nSubs = height(data1);
 newLabels = {'Timestamp','Age','Gender','Proficiency','LearnStyle',...
     'TetrisXP','WorkloadXP','SubmitForm','TrialNumT','ScoreT','WordsT',...
@@ -94,4 +94,4 @@ data2.TrialNumB = trialNums(:,3);
 data2.TrialNumC = trialNums(:,4);
 data2.TrialNumD = trialNums(:,5);
 
-writetable(data2,'processedData1.csv')
+writetable(data2,'processedData.csv')
